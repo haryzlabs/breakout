@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<!-- This is an HTML note. The browser ignores everything between the arrows. -->
+<!-- "en" tells the browser and screen readers that the page is in English. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <!-- The text on the browser tab. -->
+    <title>Breakout</title>
+    <style>
+      /* This is a CSS note. CSS says how things LOOK. */
+
+      /* The heading: blue and small. */
+      h1 {
+        color: blue;
+        font-size: 14px;
+      }
+      /* A canvas is see-through, so this border shows where the game board is. */
+      canvas {
+        border-style: solid;
+        border-color: blueviolet;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Breakout</h1>
+    </header>
+    <main>
+      <!-- The game board. JavaScript finds it using its id, "board". -->
+      <canvas id="board" height="320" width="480">
+      </canvas>
+    </main>
+    <footer></footer>
+    <!-- The script is at the bottom so the canvas above already exists when it runs. -->
+    <script>
+      // This is a JavaScript note. JavaScript says what things DO.
+
+      console.log("Hello world");
+
+      // ===== SETUP =====
+      // Find the canvas, then get its 2D paintbrush (ctx) for drawing.
+      const canvas = document.getElementById("board");
+      const ctx = canvas.getContext("2d");
+
+      // ===== THE DATA (boxes that remember things) =====
+      // Paddle. Only x is "let", because the paddle only moves left and right.
+      let paddleX = 240;
+      const paddleY = 300;
+      const paddleWidth = 75;
+      const paddleHeight = 10;
+
+      // Ball. x and y are its CENTRE. The speeds are "let" because they flip when it bounces.
+      // Positive speed = right/down, negative speed = left/up.
+      let ballX = 240;
+      let ballY = 150;
+      const ballRadius = 8;
+      let ballVelX = -2;
+      let ballVelY = -2;
+
+      // Bricks: their size, the space between them, and where the row starts.
+      const brickWidth = 75;
+      const brickHeight = 20;
+      const brickGap = 10;
+      const brickOffset = 20;
+      const brickY = 30;
+
+      // One slot per brick: true = still there, false = broken. Slots start at 0.
+      const bricks = [true, true, true, true, true];
+
+      // One point for every broken brick.
+      let score = 0;
+
+      // ===== DRAW: one picture of the flip-book =====
+      // This runs about 60 times a second (see requestAnimationFrame at the end).
+      function draw() {
+        // 1. Wipe the whole canvas clean, so old pictures don't leave a trail.
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+
+        // 2. Paint the paddle. Pick the colour FIRST, then paint.
+        ctx.fillStyle = "black";
+        ctx.fillRect(paddleX, paddleY,  paddleWidth, paddleHeight);
+
+        // 3. Paint the ball: start a shape, draw a full circle (Math.PI * 2), fill it in.
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+
+        // 4. The bricks. Dip the brush once, then the loop draws them one by one.
+        ctx.fillStyle = "orange";
+
+        // i counts 0, 1, 2, 3, 4: one round per brick.
+        for (let i = 0; i < 5; i = i + 1) {
+          // Only draw (and check) bricks that are still there.
+          if (bricks[i]) {
+            // Each brick starts one "brick + gap" further right than the one before.
+            const brickX = brickOffset + i * (brickWidth + brickGap);
+            ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
+           // Is the ball inside this brick? (between its left and right sides,
+           // AND between its top and bottom)
+           if (ballX > brickX &&
+              ballX < brickX + brickWidth &&
+              ballY - ballRadius < brickY + brickHeight &&
+              ballY + ballRadius > brickY) {
+              // Yes: break the brick, bounce the ball, add a point.
+              bricks[i] = false;
+              ballVelY = - ballVelY;
+              score = score + 1;
+            }
+          }
+        }
+
+        // 5. All 5 bricks broken? You win! Reload so the popup doesn't repeat forever.
+        if (score === 5) {
+         alert("You win!");
+         document.location.reload();
+        }
+
+        // 6. Write the score at the bottom-left. y is where the BOTTOM of the letters sits.
+        ctx.font = "16px Arial";
+        ctx.fillText(score, 30, 315)
+
+        // 7. Move the ball by its speed.
+        ballX = ballX + ballVelX;
+        ballY = ballY + ballVelY;
+
+        // 8. Walls. If the ball's EDGE (centre +/- radius) hits a wall,
+        // flip the sign of the speed to turn it around.
+
+        // Left wall
+        if (ballX - ballRadius < 0) {
+          ballVelX = - ballVelX;
+        }
+
+        // Right wall
+        if (ballX + ballRadius > canvas.width) {
+          ballVelX = - ballVelX;
+        }
+
+        // Top wall
+        if (ballY - ballRadius <0) {
+          ballVelY = -ballVelY;
+        }
+
+        // Bottom: the player missed. Game over, then restart.
+        if (ballY + ballRadius > canvas.height) {
+          alert("Game Over");
+          document.location.reload();
+        }
+
+
+        // 9. Paddle: the ball is low enough AND between the paddle's sides, so bounce up.
+        if (ballY + ballRadius > paddleY && ballX < paddleX + paddleWidth && ballX > paddleX) {
+          ballVelY = -ballVelY;
+        }
+
+        // 10. "Next time you paint the screen, run draw again." This keeps the flip-book going.
+        // No () after draw: we hand over the recipe card, we don't run it right now.
+        requestAnimationFrame(draw);
+      }
+
+      // ===== KEYBOARD =====
+      // The browser runs this every time a key is pressed, and puts a note
+      // about the key press in "event". event.key is the key's name.
+      function keyDown(event) {
+        console.log(event.key);
+
+        // Arrow keys move the paddle 20 pixels.
+        if (event.key === "ArrowLeft") {
+          paddleX = paddleX - 20;
+        }
+
+        if (event.key === "ArrowRight") {
+          paddleX = paddleX + 20;
+        }
+
+        // Keep the paddle on the board.
+        // Too far left? Put it back at the left edge.
+        if (paddleX < 0) {
+          paddleX = 0;
+        }
+
+        // Too far right? Put its right side exactly at the right edge.
+        if (paddleX + paddleWidth > canvas.width) {
+          paddleX = canvas.width - paddleWidth;
+        }
+      }
+
+      // "Page, listen for key presses, and use the keyDown card when one happens."
+      // (Remember to click the canvas first, so the page gets your key presses.)
+      document.addEventListener("keydown", keyDown);
+
+      // The first push of the domino: run draw once, and it keeps itself going.
+      draw();
+
+    </script>
+  </body>
+</html>
